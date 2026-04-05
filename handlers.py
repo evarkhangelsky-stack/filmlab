@@ -187,8 +187,8 @@ async def process_payment(callback: CallbackQuery, state: FSMContext):
 
     order_id = create_order(user_id, items, subtotal, total, method_code, pickup_station)
 
-    await notify_admin_new_order(order_id, user_id, items, subtotal, total, method_code, pickup_station)
-
+    await notify_admin_new_order(callback.bot, order_id, user_id, items, subtotal, total, method_code, pickup_station)
+    
     # Показываем реквизиты
     if method_code == "usdt":
         await callback.message.edit_text(
