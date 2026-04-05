@@ -5,8 +5,8 @@ from database import update_order_status
 
 router = Router()
 
-async def notify_admin_new_order(order_id, user_id, items, subtotal, total, payment_method, pickup_station):
-    bot = Bot.get_current()
+# Добавляем параметр bot
+async def notify_admin_new_order(bot: Bot, order_id, user_id, items, subtotal, total, payment_method, pickup_station):
     items_text = "\n".join([f"{PRODUCTS[i['id']]['name']} x{i['qty']}" for i in items])
     text = (
         f"🆕 *Новый заказ #{order_id}*\n\n"
