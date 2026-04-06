@@ -1,93 +1,90 @@
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from config import PRODUCTS, PAYMENT_METHODS, PICKUP_STATIONS
 
-# Главное меню (кнопки для навигации)
+# ----- Главное меню (как на картинке) -----
 main_menu_kb = InlineKeyboardMarkup(inline_keyboard=[
-    [InlineKeyboardButton(text="🛍 Каталог", callback_data="main_catalog"),
-     InlineKeyboardButton(text="🛒 Корзина", callback_data="main_cart")],
-    [InlineKeyboardButton(text="📜 Мои заказы", callback_data="main_orders"),
-     InlineKeyboardButton(text="❓ FAQ", callback_data="main_faq")],
-    [InlineKeyboardButton(text="📓 Lab notes", callback_data="main_labnotes")]
+    [InlineKeyboardButton(text="MAIN MENU / SHOP", callback_data="main_shop")],
+    [InlineKeyboardButton(text="LOADING BAY INTRO", callback_data="main_loading")],
+    [InlineKeyboardButton(text="MY ORDERS", callback_data="main_orders")],
+    [InlineKeyboardButton(text="FAQ & ECN-2", callback_data="main_faq")],
+    [InlineKeyboardButton(text="LAB NOTES", callback_data="main_labnotes")],
+    [InlineKeyboardButton(text="LOAD REEL", callback_data="main_cart")]
 ])
 
-# Каталог (список товаров)
+# ----- Каталог (список товаров) -----
 def catalog_kb():
     kb = InlineKeyboardMarkup(inline_keyboard=[])
     for pid, info in PRODUCTS.items():
         kb.inline_keyboard.append([
-            InlineKeyboardButton(text=f"📷 {info['name']} — {info['price']} ₽",
-                                 callback_data=f"product_{pid}")
+            InlineKeyboardButton(
+                text=f"{info['name']}  {info['price']} {CURRENCY_SYMBOL}",
+                callback_data=f"product_{pid}"
+            )
         ])
-    kb.inline_keyboard.append([InlineKeyboardButton(text="🔙 На главную", callback_data="main_menu")])
+    kb.inline_keyboard.append([InlineKeyboardButton(text="◀ BACK", callback_data="main_menu")])
     return kb
 
-# Карточка товара
+# ----- Карточка товара -----
 def product_kb(product_id: str):
     return InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="➕ Добавить в корзину", callback_data=f"add_{product_id}")],
-        [InlineKeyboardButton(text="🔙 В каталог", callback_data="main_catalog")]
+        [InlineKeyboardButton(text="➕ ADD TO REEL", callback_data=f"add_{product_id}")],
+        [InlineKeyboardButton(text="◀ BACK TO SHOP", callback_data="main_shop")]
     ])
 
-# Корзина (динамическая)
-def cart_kb(user_id: int, cart_data: dict):
+# ----- Корзина / ORDER SUMMARY -----
+def cart_kb(user_id: int, cart_data: dict, total: int, reserve_time_str: str):
     kb = InlineKeyboardMarkup(inline_keyboard=[])
     for pid, qty in cart_data.items():
-        name = PRODUCTS[pid]["name"][:20]
+        name = PRODUCTS[pid]["name"][:15]
         kb.inline_keyboard.append([
-            InlineKeyboardButton(text="➖", callback_data=f"dec_{pid}"),
+            InlineKeyboardButton(text="−", callback_data=f"dec_{pid}"),
             InlineKeyboardButton(text=f"{name} x{qty}", callback_data="ignore"),
-            InlineKeyboardButton(text="➕", callback_data=f"inc_{pid}"),
-            InlineKeyboardButton(text="❌", callback_data=f"del_{pid}")
+            InlineKeyboardButton(text="+", callback_data=f"inc_{pid}"),
+            InlineKeyboardButton(text="🗑", callback_data=f"del_{pid}")
         ])
+    # Способы оплаты как на дизайне
     kb.inline_keyboard.append([
-        InlineKeyboardButton(text="💳 Оформить заказ", callback_data="checkout"),
-        InlineKeyboardButton(text="🗑 Очистить", callback_data="clear_cart")
+        InlineKeyboardButton(text="GAL (ECI)", callback_data="pay_gal"),
+        InlineKeyboardButton(text="USDT/TON", callback_data="pay_usdt_ton"),
+        InlineKeyboardButton(text="CARD TRANSFER", callback_data="pay_card")
     ])
-    kb.inline_keyboard.append([InlineKeyboardButton(text="🔙 На главную", callback_data="main_menu")])
-    return kb
+    kb.inline_keyboard.append([
+        InlineKeyboardButton(text="🗑 CLEAR CART", callback_data="clear_cart"),
+        InlineKeyboardButton(text="◀ BACK", callback_data="main_menu")
+    ])
+    # Добавляем информацию о резерве
+    return kb, f"RESERVED FOR {reserve_time_str}"
 
-# Выбор метро
+# ----- Выбор метро (перед оплатой) -----
 def pickup_stations_kb():
     kb = InlineKeyboardMarkup(inline_keyboard=[])
     for station in PICKUP_STATIONS:
         kb.inline_keyboard.append([InlineKeyboardButton(text=station, callback_data=f"station_{station}")])
-    kb.inline_keyboard.append([InlineKeyboardButton(text="🔙 Назад", callback_data="main_cart")])
+    kb.inline_keyboard.append([InlineKeyboardButton(text="◀ BACK", callback_data="main_cart")])
     return kb
 
-# Способы оплаты
-def payment_kb():
-    kb = InlineKeyboardMarkup(inline_keyboard=[])
-    for code, name in PAYMENT_METHODS.items():
-        kb.inline_keyboard.append([InlineKeyboardButton(text=name, callback_data=f"pay_{code}")])
-    kb.inline_keyboard.append([InlineKeyboardButton(text="🔙 Назад", callback_data="main_cart")])
+# ----- Страница криптооплаты (USDT TRC20) -----
+def crypto_payment_kb(order_id: int, total_usdt: str):
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="✅ I PAID", callback_data=f"i_paid_{order_id}")],
+        [InlineKeyboardButton(text="◀ CANCEL", callback_data="main_menu")]
+    ])
     return kb
 
-# Мои заказы (список)
+# ----- Мои заказы (список) -----
 def my_orders_kb(orders):
     kb = InlineKeyboardMarkup(inline_keyboard=[])
     for order in orders:
         status_emoji = "⏳" if order["status"] == "pending" else "✅" if order["status"] == "paid" else "📦"
-        text = f"{status_emoji} Заказ #{order['order_id']} - {order['total']}₽"
+        text = f"{status_emoji} ORDER #{order['order_id']} – {order['total']} {CURRENCY_SYMBOL}"
         kb.inline_keyboard.append([InlineKeyboardButton(text=text, callback_data=f"order_{order['order_id']}")])
-    kb.inline_keyboard.append([InlineKeyboardButton(text="🔙 На главную", callback_data="main_menu")])
+    kb.inline_keyboard.append([InlineKeyboardButton(text="◀ BACK", callback_data="main_menu")])
     return kb
 
-def order_detail_kb(order_id: int, tracking=None):
-    kb = InlineKeyboardMarkup(inline_keyboard=[])
-    if tracking:
-        kb.inline_keyboard.append([InlineKeyboardButton(text="📍 Отследить", url=f"https://www.pochta.ru/tracking/{tracking}")])
-    kb.inline_keyboard.append([InlineKeyboardButton(text="🔙 К моим заказам", callback_data="main_orders")])
-    return kb
-
-# Клавиатура для карусели
-def gallery_kb(current_index: int, total: int):
-    kb = InlineKeyboardMarkup(inline_keyboard=[])
-    nav_buttons = []
-    if current_index > 0:
-        nav_buttons.append(InlineKeyboardButton(text="◀ Назад", callback_data="gallery_prev"))
-    if current_index < total - 1:
-        nav_buttons.append(InlineKeyboardButton(text="Вперёд ▶", callback_data="gallery_next"))
-    if nav_buttons:
-        kb.inline_keyboard.append(nav_buttons)
-    kb.inline_keyboard.append([InlineKeyboardButton(text="🔙 В главное меню", callback_data="main_menu")])
+# ----- Детали заказа с трекингом (как на дизайне) -----
+def tracking_kb(tracking_number: str, location: str):
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="📍 GOOGLE MAPS", url=f"https://maps.google.com/?q={location}")],
+        [InlineKeyboardButton(text="◀ BACK TO ORDERS", callback_data="main_orders")]
+    ])
     return kb
