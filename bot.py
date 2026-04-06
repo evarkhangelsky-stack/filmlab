@@ -16,8 +16,7 @@ async def main():
     dp.include_router(user_router)
     dp.include_router(admin_router)
     await bot.set_my_commands([
-        BotCommand(command="start", description="Запустить бота"),
-        BotCommand(command="menu", description="Главное меню"),
+        BotCommand(command="start", description="Launch THE LAB"),
     ])
     await dp.start_polling(bot)
 
